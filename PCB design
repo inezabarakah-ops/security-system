@@ -1,0 +1,174 @@
+# INEZA Barakah hemeste
+# BKI Barakah — ESP32 Ultrasonic + PIR Sensor Board
+
+![Project PCB preview](./images/pcb_3d_right.png)
+
+ documentation for the ESP32-based ultrasonic + PIR sensor board and companion PCB presented in EasyEDA.
+
+---
+
+## Table of contents
+
+1. [Project Overview](#project-overview)
+2. [Features](#features)
+3. [Files in this repository](#files-in-this-repository)
+4. [Schematic & PCB](#schematic--pcb)
+
+6. [Assembly Instructions](#assembly-instructions)
+7. [Pinout & Connectors](#pinout--connectors)
+8. [Power and Regulator](#power-and-regulator)
+9. [Testing & Flashing firmware](#testing--flashing-firmware)
+10. [Design notes & Known issues](#design-notes--known-issues)
+
+
+---
+
+## Project overview
+
+This repo documents an ESP32-based module paired with a small I/O board that includes:
+
+* ESP32-WROOM module on a breakout style carrier (USB-C power and serial).
+* Ultrasonic sensor interface (HC-SR04 style), PIR motion sensor, OLED, LEDs, buzzer and simple UI.
+* On-board 3.3V regulator (AMS1117-3.3) and related decoupling.
+* Designed and routed in EasyEDA (schematic, PCB and 3D previews included).
+
+The goal: a compact sensor board for distance detection + motion detection with local user feedback (OLED + buzzer + LEDs), ready to be flashed with ESP32 firmware.
+
+---
+
+## Features
+
+* ESP32-WROOM mounted on custom breakout
+* USB-C connector for power/programming
+* HC-SR04 compatible ultrasonic connector
+* PIR sensor (HC-SR501 or compatible)
+* Small 0.96" / 1.3" I2C OLED connector
+* Two status LEDs and buzzer
+* 3.3V regulator and decoupling
+* Through-hole header footprints for easy expansion
+
+---
+
+## Files in this repository
+
+Place the following files in the project root. Example structure:
+
+```
+/README.md                <-- this file
+/LICENSE
+/BOM.csv                  <-- machine friendly BOM
+/schematic/                <-- EasyEDA schematic files + PDF export
+/pcb/                      <-- PCB project files + gerbers
+/images/                   <-- screenshots and 3D renders
+/firmware/                 <-- example firmware + flashing instructions
+/docs/                     <-- datasheets, pinouts, assembly drawings
+```
+
+
+
+---
+
+## Schematic & PCB
+
+
+
+The schematic uses an ESP32-WROOM module symbol connected to: USB-C power, AMS1117-3.3 regulator, I2C OLED, ultrasonic header, PIR sensor header, LEDs and buzzer. The design is split across two mechanical boards in the layout: the ESP32 carrier and the sensor/UI board.
+
+* Keep decoupling capacitors close to the regulator and ESP32 power pins.
+* Ensure the USB-C VBUS (5V) net and the regulator VIN are connected only where intended (avoid shorting 5V to 3.3V nets).
+
+---
+
+## Bill of Materials (BOM)
+
+Include a CSV/BOM file named `BOM.csv`. Example columns:
+
+```
+Designator,Value,Footprint,Part Number,Qty,Comment
+U8,ESP32-WROOM,ESP32-WROOM-32D-N16,ESP32-WROOM-32D-N16,1,Module
+U10,AMS1117-3.3,SOT-223,AMS1117-3.3,1,Regulator
+U11,PIR Sensor,HC-SR501,HC-SR501,1,Motion detection
+U12,Buzzer,TH-12,BZ-102,1,Active buzzer
+OLED,SSD1306 0.96",OLED-0.96,I2C-OLED,1,Display
+J1,USB-C,SMD-USB-C,USB-C-5P,1,Power & serial
+R3,R4,1k,0805,2,LED resistors
+
+```
+
+(Export the real BOM from EasyEDA to `BOM.csv` and commit it.)
+
+---
+
+## Assembly instructions
+
+1. **Prepare PCB** — Inspect the board and check silk for correct orientation markers.
+2. **Solder SMD first** — resistors, regulator (SOT-223), and small ICs.
+3. **Solder through-hole modules** — ESP32 module (if using header pins), headers, USB-C, PIR sensor.
+4. **Add mechanical parts** — standoffs and screws if required.
+5. **Populate connectors** — OLED header, ultrasonic header, PIR header, external headers.
+6. **Visual inspection** — check for bridges, cold joints and correct polarities.
+
+---
+
+## Pinout & Connectors
+
+### Main headers
+
+* **ESP32 breakout header** — exposes GPIOs labeled in the schematic (e.g. GPIO0, GPIO1, GPIO2...). Use the schematic image to map pins.
+* **Ultrasonic connector** — pins: VCC, TRIG, ECHO, GND (match your firmware wiring).
+* **PIR sensor connector** — pins: VCC, OUT, GND (match firmware wiring).
+* **OLED I2C** — pins: 3V3, GND, SCL, SDA
+
+(Include a small table mapping board silkscreen pads to ESP32 pins in `docs/pinout.md`.)
+
+---
+
+## Power and regulator
+
+* Input: USB-C 5V (VBUS) -> AMS1117-3.3 -> 3.3V rail.
+* AMS1117 requires input/output decoupling: recommended 10uF on input and 10uF on output plus local 0.1uF ceramics close to the ESP32.
+* PIR sensor may require 5V input depending on model (HC-SR501 runs at 5V but outputs 3.3V compatible logic). Verify in your design.
+
+---
+
+## Testing & Flashing firmware
+
+1. Install toolchain: [PlatformIO] or [ESP-IDF].
+2. Example PlatformIO `platformio.ini` (place in `/firmware`):
+
+```ini
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+```
+
+3. Example quick test sketch (Arduino):
+
+   * Read PIR sensor output and print motion detected events.
+   * Measure distances from ultrasonic and print to serial.
+   * Blink LEDs and display values on OLED.
+
+4. Connect USB-C to PC and flash via PlatformIO or `esptool.py`.
+
+---
+
+## Design notes & Known issues
+
+* **Regulator heat:** AMS1117 on a small carrier can run hot under high load; for battery-powered or high-current applications consider an LDO with better efficiency or an MP2307 buck.
+* **HC-SR04 timing:** ECHO pin voltage must not exceed 3.3V; if using a 5V sensor, add a level shifter or divider on ECHO.
+* **PIR sensor power:** Some PIR modules need 5V; if so, power them from the USB VBUS and ensure output is 3.3V safe.
+* **ESP32 boot pins:** Avoid pulling strapping pins low/high unintentionally with external circuits; add jumper or series resistor if necessary.
+
+---
+
+## Manufacturing / Gerbers
+
+* Export Gerber and drill files from EasyEDA and place them under `/pcb/gerbers/`.
+* Include a README in the `/pcb/` folder with fab stackup recommendations (1.6 mm FR4, 2 × 35 µm copper default) and solder mask color.
+
+---
+
+
+
